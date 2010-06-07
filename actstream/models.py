@@ -62,7 +62,8 @@ class Action(models.Model):
     
         <actor> <verb> <time>
         <actor> <verb> <target> <time>
-    
+        <actor> <verb> <action_object> <target> <time>
+        
     Examples::
     
         <justquick> <reached level 60> <1 minute ago>
@@ -84,6 +85,10 @@ class Action(models.Model):
     
     verb = models.CharField(max_length=255)
     description = models.TextField(blank=True,null=True)
+
+    action_object_content_type = models.ForeignKey(ContentType,related_name='action_object',blank=True,null=True)
+    action_object_object_id = models.PositiveIntegerField(blank=True,null=True) 
+    action_object = generic.GenericForeignKey('action_object_content_type','action_object_object_id')
     
     target_content_type = models.ForeignKey(ContentType,related_name='target',blank=True,null=True)
     target_object_id = models.PositiveIntegerField(blank=True,null=True) 
@@ -178,7 +183,7 @@ def model_stream(model):
 model_stream.__doc__ = Action.objects.stream_for_model.__doc__
 
     
-def action_handler(verb, target=None, public=True, **kwargs):
+def action_handler(verb, target=None, action_object=None, public=True, **kwargs):
     actor = kwargs.pop('sender')
     kwargs.pop('signal', None)
     action = Action(actor_content_type=ContentType.objects.get_for_model(actor),
@@ -188,6 +193,10 @@ def action_handler(verb, target=None, public=True, **kwargs):
     if target:
         action.target_object_id=target.pk
         action.target_content_type=ContentType.objects.get_for_model(target)
+    
+    if action_object:
+        action.action_object_object_id = action_object.pk
+        action.action_object_content_type=ContentType.objects.get_for_model(action_object)
 
     action.save()
     
